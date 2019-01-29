@@ -1,0 +1,5 @@
+rst/
+out/
+*.o*
+*.dat
+naluX
