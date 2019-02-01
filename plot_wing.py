@@ -6,18 +6,12 @@
 #
 # ========================================================================
 import argparse
-import sys
 import os
-import glob
 import numpy as np
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib.patches import Polygon
-from matplotlib.collections import PatchCollection
 import pandas as pd
-import scipy.interpolate as spi
-import yaml
+import utilities as utilities
 
 # ========================================================================
 #
@@ -62,38 +56,6 @@ markertype = ["s", "d", "o", "p", "h"]
 # Function definitions
 #
 # ========================================================================
-def get_merged_csv(fnames, **kwargs):
-    lst = []
-    for fname in fnames:
-        try:
-            df = pd.read_csv(fname, **kwargs)
-            lst.append(df)
-        except pd.errors.EmptyDataError:
-            pass
-    return pd.concat(lst, ignore_index=True)
-
-
-def parse_ic(fname):
-    """Parse the Nalu yaml input file for the initial conditions"""
-    with open(fname, "r") as stream:
-        try:
-            dat = yaml.load(stream)
-            u0 = float(
-                dat["realms"][0]["initial_conditions"][0]["value"]["velocity"][0]
-            )
-            rho0 = float(
-                dat["realms"][0]["material_properties"]["specifications"][0]["value"]
-            )
-            mu = float(
-                dat["realms"][0]["material_properties"]["specifications"][1]["value"]
-            )
-
-            return u0, rho0, mu
-
-        except yaml.YAMLError as exc:
-            print(exc)
-
-
 def sort_by_angle(x, y, var):
     """Radial sort of variable on x and y for plotting
 
@@ -122,14 +84,14 @@ if __name__ == "__main__":
 
     # ========================================================================
     # Parse arguments
-    parser = argparse.ArgumentParser(description="A simple plot tool")
+    parser = argparse.ArgumentParser(
+        description="A simple plot tool for wing quantities"
+    )
     parser.add_argument("-s", "--show", help="Show the plots", action="store_true")
     args = parser.parse_args()
 
     # ========================================================================
     # Setup
-    ninterp = 100
-
     fdir = os.path.abspath("DES")
     yname = os.path.join(fdir, "mcalister.yaml")
     fname = "avg_slice.csv"
@@ -137,7 +99,7 @@ if __name__ == "__main__":
     labels = ["DES"]
 
     # simulation setup parameters
-    u0, rho0, mu = parse_ic(yname)
+    u0, rho0, mu = utilities.parse_ic(yname)
     chord = 1
 
     # ========================================================================
@@ -174,7 +136,6 @@ if __name__ == "__main__":
 
         for k, zslice in enumerate(zslices):
             subdf = df[df["z"] == zslice]
-            print(subdf)
 
             # Sort for a pretty plot
             x, y, cp = sort_by_angle(
