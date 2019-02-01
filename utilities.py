@@ -5,6 +5,7 @@
 # ========================================================================
 import pandas as pd
 import yaml
+import slice_locations as slice_locations
 
 
 # ========================================================================
@@ -43,3 +44,15 @@ def parse_ic(fname):
 
         except yaml.YAMLError as exc:
             print(exc)
+
+
+# ========================================================================
+def get_wing_slices():
+    """Return the wing slices"""
+    return pd.DataFrame(slice_locations.get_wing_slices(), columns=["zslice"])
+
+
+# ========================================================================
+def get_vortex_slices():
+    """Return the vortex slices"""
+    return pd.DataFrame(slice_locations.get_vortex_slices(), columns=["xslice"])

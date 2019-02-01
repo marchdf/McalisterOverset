@@ -16,6 +16,7 @@ paraview.simple._DisableFirstRenderCameraReset()
 import os
 import glob
 import shutil
+import slice_locations as slice_locations
 
 # ----------------------------------------------------------------
 # setup
@@ -66,7 +67,7 @@ threshold1.ThresholdRange = [1.0, 1.0]
 # create a new 'Slice'
 slice1 = Slice(Input=threshold1)
 slice1.SliceType = "Plane"
-slice1.SliceOffsetValues = [0.0, 0.1, 0.2, 0.5, 1.0, 2.0, 4.0, 6.0]
+slice1.SliceOffsetValues = slice_locations.get_vortex_slices()
 
 # init the 'Plane' selected for 'SliceType'
 slice1.SliceType.Origin = [1.0, 0.0, 0.0]

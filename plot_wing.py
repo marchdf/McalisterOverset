@@ -82,7 +82,6 @@ def sort_by_angle(x, y, var):
 # ========================================================================
 if __name__ == "__main__":
 
-    # ========================================================================
     # Parse arguments
     parser = argparse.ArgumentParser(
         description="A simple plot tool for wing quantities"
@@ -90,23 +89,22 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--show", help="Show the plots", action="store_true")
     args = parser.parse_args()
 
-    # ========================================================================
     # Setup
     fdir = os.path.abspath("DES")
     yname = os.path.join(fdir, "mcalister.yaml")
     fname = "avg_slice.csv"
     sdirs = ["wing_slices"]
     labels = ["DES"]
+    edir = os.path.abspath("exp_data")
+    exp_zslices = utilities.get_wing_slices()
 
     # simulation setup parameters
     u0, rho0, mu = utilities.parse_ic(yname)
     chord = 1
 
-    # ========================================================================
     # Loop on data directories
     for i, sdir in enumerate([os.path.join(fdir, sdir) for sdir in sdirs]):
 
-        # ========================================================================
         # Read in data
         df = pd.read_csv(os.path.join(sdir, fname), delimiter=",")
         renames = {
@@ -130,7 +128,6 @@ if __name__ == "__main__":
         # Calculate the negative of the surface pressure coefficient
         df["cp"] = -df["p"] / (0.5 * rho0 * u0 ** 2)
 
-        # ========================================================================
         # Plot cp in each slice
         zslices = np.unique(df["z"])
 
@@ -148,7 +145,25 @@ if __name__ == "__main__":
             p = plt.plot(x / chord, cp, ls="-", lw=2, color=cmap[i], label=labels[i])
             p[0].set_dashes(dashseq[i])
 
-    # ========================================================================
+            # Load corresponding exp data
+            idx = exp_zslices[np.fabs(exp_zslices.zslice - zslice) < 1e-5].index[0]
+            exp_df = pd.read_csv(
+                os.path.join(edir, "cp_fig21_{:d}.txt".format(idx)),
+                header=0,
+                names=["x", "cp"],
+            )
+            plt.plot(
+                exp_df.x,
+                exp_df.cp,
+                ls="",
+                color=cmap[-1],
+                marker=markertype[0],
+                ms=6,
+                mec=cmap[-1],
+                mfc=cmap[-1],
+                label="Exp.",
+            )
+
     # Save plots
     fname = "wing_cp.pdf"
     with PdfPages(fname) as pdf:
@@ -161,10 +176,10 @@ if __name__ == "__main__":
             plt.setp(ax.get_xmajorticklabels(), fontsize=16, fontweight="bold")
             plt.setp(ax.get_ymajorticklabels(), fontsize=16, fontweight="bold")
             plt.xlim([0, chord])
-            plt.ylim([-1.5, 4.5])
+            plt.ylim([-1.5, 5.5])
             ax.set_title(r"$z={0:.5f}$".format(zslice))
             plt.tight_layout()
-            if k == 1:
+            if k == 0:
                 legend = ax.legend(loc="best")
             pdf.savefig(dpi=300)
 

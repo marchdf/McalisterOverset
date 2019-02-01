@@ -21,6 +21,7 @@ import utilities as utilities
 #
 # ========================================================================
 plt.rc("text", usetex=True)
+plt.rc("figure", max_open_warning=100)
 cmap_med = [
     "#F15A60",
     "#7AC36A",
@@ -67,9 +68,6 @@ markertype = ["s", "d", "o", "p", "h"]
 # ========================================================================
 if __name__ == "__main__":
 
-    # ========================================================================
-    # Parse arguments
-    # ========================================================================
     # Parse arguments
     parser = argparse.ArgumentParser(
         description="A simple plot tool for vortex quantities"
@@ -77,10 +75,10 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--show", help="Show the plots", action="store_true")
     args = parser.parse_args()
 
-    # ========================================================================
     # Setup
     ninterp = 200
     mm2ft = 0.003281
+    mm2m = 1e-3
     fdir = os.path.abspath("DES")
     yname = os.path.join(fdir, "mcalister.yaml")
     fname = "avg_slice.csv"
@@ -94,14 +92,11 @@ if __name__ == "__main__":
 
     # experimental values
     edir = os.path.abspath("exp_data")
-    fux_exp = os.path.join(edir, "ux_x4.txt")
-    fuz_exp = os.path.join(edir, "uz_x4.txt")
+    exp_xslices = utilities.get_vortex_slices()
 
-    # ========================================================================
     # Loop on data directories
     for i, sdir in enumerate([os.path.join(fdir, sdir) for sdir in sdirs]):
 
-        # ========================================================================
         # Read in data
         df = pd.read_csv(os.path.join(sdir, fname), delimiter=",")
         renames = {
@@ -118,10 +113,8 @@ if __name__ == "__main__":
         }
         df.columns = [renames[col] for col in df.columns]
 
-        # ========================================================================
         # Lineout through vortex core in each slice
         xslices = np.unique(df["x"])
-
         for k, xslice in enumerate(xslices):
             subdf = df[df["x"] == xslice].copy()
             idx = subdf["p"].idxmin()
@@ -188,45 +181,51 @@ if __name__ == "__main__":
                 plt.xlim(zmin, zmax)
                 plt.ylim(ymin, ymax)
 
-    # # ========================================================================
-    # # Experimental data
-    # exp_ux_df = pd.read_csv(fux_exp, delimiter=",", header=0, names=["y", "ux"])
-    # exp_uz_df = pd.read_csv(fuz_exp, delimiter=",", header=0, names=["y", "uz"])
+            # Experimental data
+            idx = exp_xslices[np.fabs(exp_xslices.xslice + 1 - xslice) < 1e-5].index[0]
+            exp_ux_df = pd.read_csv(
+                os.path.join(edir, "ux_fig39_{:d}.txt".format(idx)),
+                header=0,
+                names=["z", "ux"],
+            )
+            exp_uy_df = pd.read_csv(
+                os.path.join(edir, "uz_fig39_{:d}.txt".format(idx)),
+                header=0,
+                names=["z", "uy"],
+            )
 
-    # # Shift in ft to align coordinates with mesh.
-    # yshift = 0.0749174
+            # Change units
+            exp_ux_df["z"] = exp_ux_df["z"] * mm2m / chord + 3.3
+            exp_uy_df["z"] = exp_uy_df["z"] * mm2m / chord + 3.3
 
-    # exp_ux_df["y"] = (exp_ux_df["y"] * mm2ft - yshift) / chord
-    # exp_uz_df["y"] = (exp_uz_df["y"] * mm2ft - yshift) / chord
+            plt.figure(k * num_figs + 0)
+            plt.plot(
+                exp_ux_df["z"],
+                exp_ux_df["ux"],
+                ls="-",
+                lw=1,
+                color=cmap[-1],
+                marker=markertype[0],
+                mec=cmap[-1],
+                mfc=cmap[-1],
+                ms=6,
+                label="Exp.",
+            )
 
-    # plt.figure(0)
-    # plt.plot(
-    #     exp_ux_df["y"],
-    #     exp_ux_df["ux"],
-    #     ls="-",
-    #     lw=1,
-    #     color=cmap[-1],
-    #     marker=markertype[0],
-    #     mec=cmap[-1],
-    #     mfc=cmap[-1],
-    #     ms=6,
-    #     label="Exp.",
-    # )
+            plt.figure(k * num_figs + 1)
+            plt.plot(
+                exp_uy_df["z"],
+                exp_uy_df["uy"],
+                ls="-",
+                lw=1,
+                color=cmap[-1],
+                marker=markertype[0],
+                mec=cmap[-1],
+                mfc=cmap[-1],
+                ms=6,
+                label="Exp.",
+            )
 
-    # plt.figure(1)
-    # plt.plot(
-    #     exp_uz_df["y"],
-    #     exp_uz_df["uz"],
-    #     ls="-",
-    #     lw=1,
-    #     color=cmap[-1],
-    #     marker=markertype[0],
-    #     mec=cmap[-1],
-    #     mfc=cmap[-1],
-    #     ms=6,
-    # )
-
-    # ========================================================================
     # Save plots
     fname = "vortex.pdf"
     with PdfPages(fname) as pdf:

@@ -16,6 +16,7 @@ paraview.simple._DisableFirstRenderCameraReset()
 import os
 import glob
 import shutil
+import slice_locations as slice_locations
 
 # ----------------------------------------------------------------
 # setup
@@ -65,28 +66,10 @@ threshold1.ThresholdRange = [1.0, 1.0]
 wing_length = 3.3
 
 # create a new 'Slice'
-# at span location corresponding to McAlister paper Fig 6.
-# [0.994, 0.984, 0.974, 0.974, 0.959, 0.944, 0.899, 0.843, 0.773, 0.692, 0.597, 0.491, 0.370, 0.238, 0.094]
+# at span location corresponding to McAlister paper Fig. 21
 slice1 = Slice(Input=threshold1)
 slice1.SliceType = "Plane"
-slice1.SliceOffsetValues = [
-    0.0,
-    0.0198,
-    0.0528,
-    0.0858,
-    0.0858,
-    0.1353,
-    0.1848,
-    0.3333,
-    0.5181,
-    0.7491,
-    1.0164,
-    1.3299,
-    1.6797,
-    2.079,
-    2.5146,
-    2.9898,
-]
+slice1.SliceOffsetValues = slice_locations.get_wing_slices()
 
 # init the 'Plane' selected for 'SliceType'
 slice1.SliceType.Origin = [0.0, 0.0, 0.0]
