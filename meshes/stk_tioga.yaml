@@ -1,0 +1,21 @@
+
+input_mesh: McAlisterOverset_4.exo
+
+output_mesh: holecut/mcalister_holecut.g
+
+decomposition_method: rcb
+
+dump_tioga_partitions: false
+
+write_outputs: true
+
+overset_info:
+  mesh_group:
+    - overset_name: wing
+      mesh_parts: [ nearbody-HEX, nearbody-WEDGE ]
+      wall_parts: [ wing ]
+      ovset_parts: [ outerbc_innerblock ]
+
+    - overset_name: background
+      mesh_parts: [ tipvortex-HEX, tipvortex-WEDGE, farwake-HEX, farwake-WEDGE, farwake-PYRAMID, farwake-TETRA ]
+      ovset_parts: [ innerbc_outerblock ]

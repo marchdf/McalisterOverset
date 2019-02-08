@@ -7,6 +7,7 @@
 # ========================================================================
 import argparse
 import os
+import glob as glob
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -90,17 +91,20 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Setup
-    fdir = os.path.abspath("DES")
+    fdir = os.path.abspath("SST-12")
     yname = os.path.join(fdir, "mcalister.yaml")
     fname = "avg_slice.csv"
     sdirs = ["wing_slices"]
-    labels = ["DES"]
-    edir = os.path.abspath("exp_data")
-    exp_zslices = utilities.get_wing_slices()
+    labels = ["SST-12"]
 
     # simulation setup parameters
-    u0, rho0, mu = utilities.parse_ic(yname)
+    u0, v0, w0, umag0, rho0, mu = utilities.parse_ic(yname)
+    aoa, R = utilities.parse_angle(fdir)
     chord = 1
+
+    # experimental values
+    edir = os.path.abspath(os.path.join("exp_data", f"aoa-{aoa}"))
+    exp_zslices = utilities.get_wing_slices()
 
     # Loop on data directories
     for i, sdir in enumerate([os.path.join(fdir, sdir) for sdir in sdirs]):
@@ -126,7 +130,7 @@ if __name__ == "__main__":
         df.columns = [renames[col] for col in df.columns]
 
         # Calculate the negative of the surface pressure coefficient
-        df["cp"] = -df["p"] / (0.5 * rho0 * u0 ** 2)
+        df["cp"] = -df["p"] / (0.5 * rho0 * umag0 ** 2)
 
         # Plot cp in each slice
         zslices = np.unique(df["z"])
@@ -147,11 +151,8 @@ if __name__ == "__main__":
 
             # Load corresponding exp data
             idx = exp_zslices[np.fabs(exp_zslices.zslice - zslice) < 1e-5].index[0]
-            exp_df = pd.read_csv(
-                os.path.join(edir, "cp_fig21_{:d}.txt".format(idx)),
-                header=0,
-                names=["x", "cp"],
-            )
+            ename = glob.glob(os.path.join(edir, "cp_*_{:d}.txt".format(idx)))[0]
+            exp_df = pd.read_csv(ename, header=0, names=["x", "cp"])
             plt.plot(
                 exp_df.x,
                 exp_df.cp,

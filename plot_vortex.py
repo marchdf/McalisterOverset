@@ -7,6 +7,7 @@
 # ========================================================================
 import argparse
 import os
+import glob as glob
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -77,21 +78,22 @@ if __name__ == "__main__":
 
     # Setup
     ninterp = 200
-    mm2ft = 0.003281
+    mm2ft = 0.003_281
     mm2m = 1e-3
-    fdir = os.path.abspath("DES")
+    fdir = os.path.abspath("SST-12")
     yname = os.path.join(fdir, "mcalister.yaml")
     fname = "avg_slice.csv"
     sdirs = ["vortex_slices"]
-    labels = ["DES"]
+    labels = ["SST-12"]
     num_figs = 3
 
     # simulation setup parameters
-    u0, rho0, mu = utilities.parse_ic(yname)
+    u0, v0, w0, umag0, rho0, mu = utilities.parse_ic(yname)
+    aoa, R = utilities.parse_angle(fdir)
     chord = 1
 
     # experimental values
-    edir = os.path.abspath("exp_data")
+    edir = os.path.abspath(os.path.join("exp_data", f"aoa-{aoa}"))
     exp_xslices = utilities.get_vortex_slices()
 
     # Loop on data directories
@@ -144,7 +146,7 @@ if __name__ == "__main__":
             plt.figure(k * num_figs + 0)
             p = plt.plot(
                 zline / chord,
-                ux_yc[0, :] / u0,
+                ux_yc[0, :] / umag0,
                 ls="-",
                 lw=2,
                 color=cmap[i],
@@ -153,7 +155,9 @@ if __name__ == "__main__":
             p[0].set_dashes(dashseq[i])
 
             plt.figure(k * num_figs + 1)
-            p = plt.plot(zline / chord, uy_yc[0, :] / u0, ls="-", lw=2, color=cmap[i])
+            p = plt.plot(
+                zline / chord, uy_yc[0, :] / umag0, ls="-", lw=2, color=cmap[i]
+            )
             p[0].set_dashes(dashseq[i])
 
             # Plot contours
@@ -183,16 +187,10 @@ if __name__ == "__main__":
 
             # Experimental data
             idx = exp_xslices[np.fabs(exp_xslices.xslice + 1 - xslice) < 1e-5].index[0]
-            exp_ux_df = pd.read_csv(
-                os.path.join(edir, "ux_fig39_{:d}.txt".format(idx)),
-                header=0,
-                names=["z", "ux"],
-            )
-            exp_uy_df = pd.read_csv(
-                os.path.join(edir, "uz_fig39_{:d}.txt".format(idx)),
-                header=0,
-                names=["z", "uy"],
-            )
+            ux_ename = glob.glob(os.path.join(edir, "ux_*_{:d}.txt".format(idx)))[0]
+            uy_ename = glob.glob(os.path.join(edir, "uz_*_{:d}.txt".format(idx)))[0]
+            exp_ux_df = pd.read_csv(ux_ename, header=0, names=["z", "ux"])
+            exp_uy_df = pd.read_csv(uy_ename, header=0, names=["z", "uy"])
 
             # Change units
             exp_ux_df["z"] = exp_ux_df["z"] * mm2m / chord + 3.3
