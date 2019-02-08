@@ -89,7 +89,7 @@ if __name__ == "__main__":
 
     # simulation setup parameters
     u0, v0, w0, umag0, rho0, mu = utilities.parse_ic(yname)
-    aoa, R = utilities.parse_angle(fdir)
+    aoa, baseline_aoa = utilities.parse_angle(fdir)
     chord = 1
 
     # experimental values

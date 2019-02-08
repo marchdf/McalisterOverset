@@ -57,12 +57,7 @@ def parse_ic(fname):
 # ========================================================================
 def parse_angle(fdir):
     """Parse the angle of attack from the folder name"""
-    aoa = int(re.search(r"\d+", fdir).group())
-    baseline_aoa = 12.0
-    theta = np.radians(aoa - baseline_aoa)
-    c, s = np.cos(theta), np.sin(theta)
-    R = np.array(((c, -s), (s, c)))
-    return aoa, R
+    return int(re.search(r"\d+", fdir).group()), 12.0
 
 
 # ========================================================================

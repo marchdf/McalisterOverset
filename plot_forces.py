@@ -75,20 +75,13 @@ if __name__ == "__main__":
     area = 1.0 * 6.6
     u0, v0, w0, umag0, rho0, mu = utilities.parse_ic(yname)
     dynPres = rho0 * 0.5 * (umag0 ** 2)
-
-    # Rotations
-    aoa, R = utilities.parse_angle(args.folder)
-    for k in range(df.shape[0]):
-        Fp_rot = np.dot(R, (df.Fpx.iloc[k], df.Fpy.iloc[k]))
-        Fv_rot = np.dot(R, (df.Fvx.iloc[k], df.Fvy.iloc[k]))
-        df.Fpx.iloc[k] = Fp_rot[0]
-        df.Fpy.iloc[k] = Fp_rot[1]
-        df.Fvx.iloc[k] = Fv_rot[0]
-        df.Fvy.iloc[k] = Fv_rot[1]
+    aoa, baseline_aoa = utilities.parse_angle(args.folder)
 
     # Lift and drag
-    df["cl"] = (df.Fpy + df.Fvy) / (dynPres * area)
-    df["cd"] = (df.Fpx + df.Fvx) / (dynPres * area)
+    alpha = np.radians(baseline_aoa - aoa)
+    c, s = np.cos(alpha), np.sin(alpha)
+    df["cl"] = ((df.Fpy + df.Fvy) * c + (df.Fpx + df.Fvx) * s) / (dynPres * area)
+    df["cd"] = (-(df.Fpy + df.Fvy) * s + (df.Fpx + df.Fvx) * c) / (dynPres * area)
 
     # Experimental values
     edir = os.path.abspath(os.path.join("exp_data", f"aoa-{aoa}"))
