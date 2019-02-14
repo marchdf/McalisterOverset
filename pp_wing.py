@@ -1,9 +1,3 @@
-#
-# Run this script on NERSC Edison with something like:
-#    start_pvbatch.sh 4 4 00:10:00 default debug `pwd`/pp_wing.py
-#
-
-
 # ----------------------------------------------------------------
 # imports
 # ----------------------------------------------------------------
@@ -16,18 +10,25 @@ paraview.simple._DisableFirstRenderCameraReset()
 import os
 import glob
 import shutil
+import argparse
 import slice_locations as slice_locations
 
 # ----------------------------------------------------------------
 # setup
 # ----------------------------------------------------------------
 
+parser = argparse.ArgumentParser(description="Post process using paraview")
+parser.add_argument(
+    "-f", "--fdir", help="Folder to post process", type=str, required=True
+)
+args = parser.parse_args()
+
 # Get file names
-fdir = os.path.abspath("./DES/out")
+fdir = os.path.abspath(args.fdir)
 pattern = "*.e.*"
 fnames = sorted(glob.glob(os.path.join(fdir, pattern)))
 
-odir = os.path.abspath("./DES/wing_slices")
+odir = os.path.join(os.path.dirname(fdir), "wing_slices")
 shutil.rmtree(odir, ignore_errors=True)
 os.makedirs(odir)
 oname = os.path.join(odir, "output.csv")
@@ -61,9 +62,6 @@ calculator1.Function = "abs(iblank)"
 threshold1 = Threshold(Input=calculator1)
 threshold1.Scalars = ["POINTS", "absIBlank"]
 threshold1.ThresholdRange = [1.0, 1.0]
-
-# wing properties
-wing_length = 3.3
 
 # create a new 'Slice'
 # at span location corresponding to McAlister paper Fig. 21
