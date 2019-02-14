@@ -13,7 +13,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
 import scipy.interpolate as spi
-import utilities as utilities
+import utilities
+import slice_locations
 
 
 # ========================================================================
@@ -193,8 +194,12 @@ if __name__ == "__main__":
             exp_uy_df = pd.read_csv(uy_ename, header=0, names=["z", "uy"])
 
             # Change units
-            exp_ux_df["z"] = exp_ux_df["z"] * mm2m / chord + 3.3
-            exp_uy_df["z"] = exp_uy_df["z"] * mm2m / chord + 3.3
+            exp_ux_df["z"] = (
+                exp_ux_df["z"] * mm2m / chord + slice_locations.get_half_wing_length()
+            )
+            exp_uy_df["z"] = (
+                exp_uy_df["z"] * mm2m / chord + slice_locations.get_half_wing_length()
+            )
 
             plt.figure(k * num_figs + 0)
             plt.plot(

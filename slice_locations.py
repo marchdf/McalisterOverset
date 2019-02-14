@@ -1,7 +1,12 @@
 # ========================================================================
+def get_half_wing_length():
+    return 3.3
+
+
+# ========================================================================
 def get_wing_slices():
     """Return the wing slices at span location corresponding to McAlister paper Fig. 21"""
-    half_wing_length = 3.3
+    half_wing_length = get_half_wing_length()
     slices = [
         0.994,
         0.974,

@@ -11,7 +11,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
-import utilities as utilities
+import utilities
+import slice_locations
+
 
 # ========================================================================
 #
@@ -72,7 +74,7 @@ if __name__ == "__main__":
     oname = os.path.join(fdir, "forces.dat")
     df = pd.read_csv(oname, delim_whitespace=True)
 
-    area = 1.0 * 6.6
+    area = slice_locations.get_half_wing_length()
     u0, v0, w0, umag0, rho0, mu = utilities.parse_ic(yname)
     dynPres = rho0 * 0.5 * (umag0 ** 2)
     aoa, baseline_aoa = utilities.parse_angle(args.folder)

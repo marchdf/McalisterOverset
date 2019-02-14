@@ -12,7 +12,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
-import utilities as utilities
+import utilities
+import slice_locations
 
 # ========================================================================
 #
@@ -96,7 +97,7 @@ if __name__ == "__main__":
     fname = "avg_slice.csv"
     sdirs = ["wing_slices"]
     labels = ["SST-12"]
-    aspect_ratio = 3.3
+    half_wing_length = slice_locations.get_half_wing_length()
 
     # simulation setup parameters
     u0, v0, w0, umag0, rho0, mu = utilities.parse_ic(yname)
@@ -179,10 +180,10 @@ if __name__ == "__main__":
 
             # Load corresponding SA data
             satname = os.path.join(
-                sadir, "cp_{0:.3f}_top.csv".format(zslice / aspect_ratio)
+                sadir, "cp_{0:.3f}_top.csv".format(zslice / half_wing_length)
             )
             sabname = os.path.join(
-                sadir, "cp_{0:.3f}_bot.csv".format(zslice / aspect_ratio)
+                sadir, "cp_{0:.3f}_bot.csv".format(zslice / half_wing_length)
             )
             try:
                 satop = pd.read_csv(satname)
@@ -212,7 +213,7 @@ if __name__ == "__main__":
             plt.setp(ax.get_ymajorticklabels(), fontsize=16, fontweight="bold")
             plt.xlim([0, chord])
             plt.ylim([-1.5, 5.5])
-            ax.set_title(r"$z/s={0:.5f}$".format(zslice / aspect_ratio))
+            ax.set_title(r"$z/s={0:.5f}$".format(zslice / half_wing_length))
             plt.tight_layout()
             if k == 0:
                 legend = ax.legend(loc="best")
