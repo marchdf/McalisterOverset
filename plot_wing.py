@@ -96,6 +96,7 @@ if __name__ == "__main__":
     fname = "avg_slice.csv"
     sdirs = ["wing_slices"]
     labels = ["SST-12"]
+    aspect_ratio = 3.3
 
     # simulation setup parameters
     u0, v0, w0, umag0, rho0, mu = utilities.parse_ic(yname)
@@ -105,6 +106,9 @@ if __name__ == "__main__":
     # experimental values
     edir = os.path.abspath(os.path.join("exp_data", f"aoa-{aoa}"))
     exp_zslices = utilities.get_wing_slices()
+
+    # data from other CFD simulations (SA model)
+    sadir = os.path.abspath(os.path.join("sitaraman_data", f"aoa-{aoa}"))
 
     # Loop on data directories
     for i, sdir in enumerate([os.path.join(fdir, sdir) for sdir in sdirs]):
@@ -129,6 +133,14 @@ if __name__ == "__main__":
         }
         df.columns = [renames[col] for col in df.columns]
 
+        # Project coordinates on to chord axis
+        ang = np.radians(aoa)
+        crdvec = np.array([np.cos(ang), -np.sin(ang)])
+        rotcen = 0.25
+        df["xovc"] = (
+            np.dot(np.asarray([df.x - rotcen, df.y]).T, crdvec) / chord + rotcen
+        )
+
         # Calculate the negative of the surface pressure coefficient
         df["cp"] = -df["p"] / (0.5 * rho0 * umag0 ** 2)
 
@@ -140,13 +152,13 @@ if __name__ == "__main__":
 
             # Sort for a pretty plot
             x, y, cp = sort_by_angle(
-                subdf["x"].values, subdf["y"].values, subdf["cp"].values
+                subdf["xovc"].values, subdf["y"].values, subdf["cp"].values
             )
 
             # plot
             plt.figure(k)
             ax = plt.gca()
-            p = plt.plot(x / chord, cp, ls="-", lw=2, color=cmap[i], label=labels[i])
+            p = plt.plot(x, cp, ls="-", lw=2, color=cmap[i], label=labels[i])
             p[0].set_dashes(dashseq[i])
 
             # Load corresponding exp data
@@ -165,6 +177,28 @@ if __name__ == "__main__":
                 label="Exp.",
             )
 
+            # Load corresponding SA data
+            satname = os.path.join(
+                sadir, "cp_{0:.3f}_top.csv".format(zslice / aspect_ratio)
+            )
+            sabname = os.path.join(
+                sadir, "cp_{0:.3f}_bot.csv".format(zslice / aspect_ratio)
+            )
+            try:
+                satop = pd.read_csv(satname)
+                sabot = pd.read_csv(sabname)
+            except FileNotFoundError:
+                continue
+            satop.sort_values(by=["x"], inplace=True)
+            sabot.sort_values(by=["x"], inplace=True, ascending=False)
+            plt.plot(
+                np.concatenate((satop.x, sabot.x), axis=0),
+                np.concatenate((satop.cp, sabot.cp), axis=0),
+                ls="-",
+                color=cmap[-2],
+                label="Sitaraman et al. (2010)",
+            )
+
     # Save plots
     fname = "wing_cp.pdf"
     with PdfPages(fname) as pdf:
@@ -178,7 +212,7 @@ if __name__ == "__main__":
             plt.setp(ax.get_ymajorticklabels(), fontsize=16, fontweight="bold")
             plt.xlim([0, chord])
             plt.ylim([-1.5, 5.5])
-            ax.set_title(r"$z={0:.5f}$".format(zslice))
+            ax.set_title(r"$z/s={0:.5f}$".format(zslice / aspect_ratio))
             plt.tight_layout()
             if k == 0:
                 legend = ax.legend(loc="best")

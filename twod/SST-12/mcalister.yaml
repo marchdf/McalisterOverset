@@ -42,7 +42,7 @@ linear_solvers:
 realms:
 
   - name: realm_1
-    mesh: ../meshes/McAlisterOverset_4.exo
+    mesh: ../../meshes/McAlister2D.exo
     automatic_decomposition_type: rcb
     use_edges: yes
 
@@ -82,30 +82,18 @@ realms:
     initial_conditions:
       - constant: ic_1
         target_name:
-          - nearbody-HEX
-          - tipvortex-HEX
-          - farwake-HEX
-          - nearbody-WEDGE
-          - tipvortex-WEDGE
-          - farwake-WEDGE
-          - farwake-PYRAMID
-          - farwake-TETRA
+          - base-QUAD
+          - base-TRIANGLE
         value:
           pressure: 0
-          velocity: [46.0,0.0,0.0]
+          velocity: [44.99478963,  9.56393778]
           turbulent_ke: 0.69
           specific_dissipation_rate: 230.0
 
     material_properties:
       target_name:
-        - nearbody-HEX
-        - tipvortex-HEX
-        - farwake-HEX
-        - nearbody-WEDGE
-        - tipvortex-WEDGE
-        - farwake-WEDGE
-        - farwake-PYRAMID
-        - farwake-TETRA
+        - base-QUAD
+        - base-TRIANGLE
       specifications:
         - name: density
           type: constant
@@ -116,29 +104,25 @@ realms:
 
     boundary_conditions:
 
-    - symmetry_boundary_condition: bc_sides
-      target_name: sides
-      symmetry_user_data:
-
-    - symmetry_boundary_condition: bc_sides
+    - symmetry_boundary_condition: bc_top
       target_name: top
       symmetry_user_data:
 
-    - symmetry_boundary_condition: bc_sides
+    - symmetry_boundary_condition: bc_bottom
       target_name: bottom
       symmetry_user_data:
 
     - wall_boundary_condition: bc_wall
       target_name: wing
       wall_user_data:
-        velocity: [0,0,0]
+        velocity: [0,0]
         use_wall_function: no
         turbulent_ke: 0.0
 
     - open_boundary_condition: bc_open
       target_name: outlet
       open_user_data:
-        velocity: [0,0,0]
+        velocity: [0,0]
         pressure: 0.0
         turbulent_ke: 0.69
         specific_dissipation_rate: 230.0
@@ -146,23 +130,9 @@ realms:
     - inflow_boundary_condition: bc_inflow
       target_name: inlet
       inflow_user_data:
-        velocity: [46.0,0.0,0.0]
+        velocity: [44.99478963,  9.56393778]
         turbulent_ke: 0.69
         specific_dissipation_rate: 230.0
-
-    - overset_boundary_condition: bc_overset
-      overset_connectivity_type: tioga
-      overset_user_data:
-        tioga_populate_inactive_part: false
-        mesh_group:
-          - overset_name: wing
-            mesh_parts: [ nearbody-HEX, nearbody-WEDGE ]
-            wall_parts: [ wing ]
-            ovset_parts: [ outerbc_innerblock ]
-
-          - overset_name: background
-            mesh_parts: [ tipvortex-HEX, tipvortex-WEDGE, farwake-HEX, farwake-WEDGE, farwake-PYRAMID, farwake-TETRA ]
-            ovset_parts: [ innerbc_outerblock ]
 
     solution_options:
       name: myOptions
@@ -213,17 +183,17 @@ realms:
         physics: surface_force_and_moment
         output_file_name: forces.dat
         frequency: 1
-        parameters: [0,0,0]
+        parameters: [0,0]
         target_name: wing
 
     restart:
       restart_data_base_name: rst/mcalister.rst
-      restart_frequency: 5
+      restart_frequency: 50
       restart_start: 5
 
     output:
       output_data_base_name: out/mcalister.e
-      output_frequency: 10
+      output_frequency: 50
       output_node_set: no
       output_variables:
        - velocity
@@ -234,15 +204,13 @@ realms:
        - sst_f_one_blending
        - turbulent_viscosity
        - element_courant
-       - iblank
-       - iblank_cell
 
 Time_Integrators:
   - StandardTimeIntegrator:
       name: ti_1
       start_time: 0
       time_step: 0.004
-      termination_step_count: 400
+      termination_step_count: 1000
       time_stepping_type: fixed
       time_step_count: 0
       second_order_accuracy: yes
