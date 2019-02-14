@@ -38,9 +38,12 @@ def parse_ic(fname):
             v0 = float(
                 dat["realms"][0]["initial_conditions"][0]["value"]["velocity"][1]
             )
-            w0 = float(
-                dat["realms"][0]["initial_conditions"][0]["value"]["velocity"][2]
-            )
+            try:
+                w0 = float(
+                    dat["realms"][0]["initial_conditions"][0]["value"]["velocity"][2]
+                )
+            except IndexError:
+                w0 = 0.0
             umag = np.sqrt(u0 ** 2 + v0 ** 2 + w0 ** 2)
             rho0 = float(
                 dat["realms"][0]["material_properties"]["specifications"][0]["value"]

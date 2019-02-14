@@ -104,20 +104,20 @@ realms:
 
     boundary_conditions:
 
-    - symmetry_boundary_condition: bc_top
-      target_name: top
-      symmetry_user_data:
-
-    - symmetry_boundary_condition: bc_bottom
-      target_name: bottom
-      symmetry_user_data:
-
     - wall_boundary_condition: bc_wall
       target_name: wing
       wall_user_data:
         velocity: [0,0]
         use_wall_function: no
         turbulent_ke: 0.0
+
+    - open_boundary_condition: bc_top
+      target_name: top
+      open_user_data:
+        velocity: [0,0]
+        pressure: 0.0
+        turbulent_ke: 0.69
+        specific_dissipation_rate: 230.0
 
     - open_boundary_condition: bc_open
       target_name: outlet
@@ -129,6 +129,13 @@ realms:
 
     - inflow_boundary_condition: bc_inflow
       target_name: inlet
+      inflow_user_data:
+        velocity: [45.88794631,  3.20879779]
+        turbulent_ke: 0.69
+        specific_dissipation_rate: 230.0
+
+    - inflow_boundary_condition: bc_bottom
+      target_name: bottom
       inflow_user_data:
         velocity: [45.88794631,  3.20879779]
         turbulent_ke: 0.69
