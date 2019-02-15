@@ -168,7 +168,7 @@ if __name__ == "__main__":
                         mfc=cmap[-1],
                         label="Exp.",
                     )
-                except FileNotFoundError:
+                except IndexError:
                     pass
 
                 # Load corresponding SA data

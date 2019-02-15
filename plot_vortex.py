@@ -14,7 +14,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
 import scipy.interpolate as spi
 import utilities
-import slice_locations
+import definitions as defs
 
 
 # ========================================================================
@@ -75,71 +75,74 @@ if __name__ == "__main__":
         description="A simple plot tool for vortex quantities"
     )
     parser.add_argument("-s", "--show", help="Show the plots", action="store_true")
+    parser.add_argument(
+        "-f",
+        "--folders",
+        nargs="+",
+        help="Folder where files are stored",
+        type=str,
+        required=True,
+    )
     args = parser.parse_args()
 
-    # Setup
+    # Constants
     ninterp = 200
     mm2ft = 0.003_281
     mm2m = 1e-3
-    fdir = os.path.abspath("SST-12")
-    yname = os.path.join(fdir, "mcalister.yaml")
-    fname = "avg_slice.csv"
-    sdirs = ["vortex_slices"]
-    labels = ["SST-12"]
     num_figs = 3
-
-    # simulation setup parameters
-    u0, v0, w0, umag0, rho0, mu = utilities.parse_ic(yname)
-    aoa, baseline_aoa = utilities.parse_angle(fdir)
     chord = 1
+    exp_chord = 0.52
 
-    # experimental values
-    edir = os.path.abspath(os.path.join("exp_data", f"aoa-{aoa}"))
-    exp_xslices = utilities.get_vortex_slices()
+    # Loop on folders
+    for i, folder in enumerate(args.folders):
 
-    # Loop on data directories
-    for i, sdir in enumerate([os.path.join(fdir, sdir) for sdir in sdirs]):
+        # Setup
+        fdir = os.path.abspath(folder)
+        yname = os.path.join(fdir, "mcalister.yaml")
+        fname = "avg_slice.csv"
+        half_wing_length = defs.get_half_wing_length()
+
+        # simulation setup parameters
+        u0, v0, w0, umag0, rho0, mu = utilities.parse_ic(yname)
+        aoa = utilities.parse_angle(fdir)
+
+        # experimental values
+        edir = os.path.abspath(os.path.join("exp_data", f"aoa-{aoa}"))
+        xslices = utilities.get_vortex_slices()
+        xslices["xslicet"] = xslices.xslice + 1
+
+        # data from other CFD simulations (SA model)
+        sadir = os.path.abspath(os.path.join("sitaraman_data", f"aoa-{aoa}"))
 
         # Read in data
-        df = pd.read_csv(os.path.join(sdir, fname), delimiter=",")
-        renames = {
-            "Points:0": "x",
-            "Points:1": "y",
-            "Points:2": "z",
-            "iblank": "iblank",
-            "absIBlank": "absIBlank",
-            "pressure": "p",
-            "velocity_:0": "ux",
-            "velocity_:1": "uy",
-            "velocity_:2": "uz",
-            "time": "avg_time",
-        }
+        df = pd.read_csv(os.path.join(fdir, "vortex_slices", fname), delimiter=",")
+        renames = utilities.get_renames()
         df.columns = [renames[col] for col in df.columns]
+        df.z -= half_wing_length
 
         # Lineout through vortex core in each slice
-        xslices = np.unique(df["x"])
-        for k, xslice in enumerate(xslices):
-            subdf = df[df["x"] == xslice].copy()
-            idx = subdf["p"].idxmin()
-            ymin, ymax = np.min(subdf["y"]), np.max(subdf["y"])
-            zmin, zmax = np.min(subdf["z"]), np.max(subdf["z"])
+        for k, (index, row) in enumerate(xslices.iterrows()):
+            subdf = df[np.fabs(df.x - row.xslicet) < 1e-5].copy()
+            idx = subdf.p.idxmin()
+            ymin, ymax = np.min(subdf.y), np.max(subdf.y)
+            zmin, zmax = np.min(subdf.z), np.max(subdf.z)
 
             # vortex center location
-            yc = np.array([subdf["y"].loc[idx]])
-            zc = np.array([subdf["z"].loc[idx]])
+            yc = np.array([subdf.y.loc[idx]])
+            zc = np.array([subdf.z.loc[idx]])
 
             # interpolate across the vortex core
             yline = np.linspace(ymin, ymax, ninterp)
             zline = np.linspace(zmin, zmax, ninterp)
             ux_yc = spi.griddata(
-                (subdf["y"], subdf["z"]),
-                subdf["ux"],
+                (subdf.y, subdf.z),
+                subdf.ux,
                 (yc[:, None], zline[None, :]),
                 method="cubic",
             )
             uy_yc = spi.griddata(
-                (subdf["y"], subdf["z"]),
-                subdf["uy"],
+                (subdf.y, subdf.z),
+                subdf.uy,
                 (yc[:, None], zline[None, :]),
                 method="cubic",
             )
@@ -151,7 +154,7 @@ if __name__ == "__main__":
                 ls="-",
                 lw=2,
                 color=cmap[i],
-                label=labels[i],
+                label=f"SST {aoa}",
             )
             p[0].set_dashes(dashseq[i])
 
@@ -170,8 +173,8 @@ if __name__ == "__main__":
                 subdf["magvel"] = np.sqrt(np.square(subdf[vcols]).sum(axis=1))
 
                 vi = spi.griddata(
-                    (subdf["y"], subdf["z"]),
-                    subdf["magvel"],
+                    (subdf.y, subdf.z),
+                    subdf.magvel,
                     (yi[None, :], zi[:, None]),
                     method="cubic",
                 )
@@ -187,52 +190,65 @@ if __name__ == "__main__":
                 plt.ylim(ymin, ymax)
 
             # Experimental data
-            idx = exp_xslices[np.fabs(exp_xslices.xslice + 1 - xslice) < 1e-5].index[0]
-            ux_ename = glob.glob(os.path.join(edir, "ux_*_{:d}.txt".format(idx)))[0]
-            uy_ename = glob.glob(os.path.join(edir, "uz_*_{:d}.txt".format(idx)))[0]
-            exp_ux_df = pd.read_csv(ux_ename, header=0, names=["z", "ux"])
-            exp_uy_df = pd.read_csv(uy_ename, header=0, names=["z", "uy"])
+            try:
+                ux_ename = glob.glob(os.path.join(edir, f"ux_*_{row.xslice:.1f}.txt"))[
+                    0
+                ]
+                uy_ename = glob.glob(os.path.join(edir, f"uz_*_{row.xslice:.1f}.txt"))[
+                    0
+                ]
+                exp_ux_df = pd.read_csv(ux_ename, header=0, names=["z", "ux"])
+                exp_uy_df = pd.read_csv(uy_ename, header=0, names=["z", "uy"])
 
-            # Change units
-            exp_ux_df["z"] = (
-                exp_ux_df["z"] * mm2m / chord + slice_locations.get_half_wing_length()
-            )
-            exp_uy_df["z"] = (
-                exp_uy_df["z"] * mm2m / chord + slice_locations.get_half_wing_length()
-            )
+                # Change units
+                exp_ux_df["z"] = exp_ux_df.z * mm2m / exp_chord
+                exp_uy_df["z"] = exp_uy_df.z * mm2m / exp_chord
 
-            plt.figure(k * num_figs + 0)
-            plt.plot(
-                exp_ux_df["z"],
-                exp_ux_df["ux"],
-                ls="-",
-                lw=1,
-                color=cmap[-1],
-                marker=markertype[0],
-                mec=cmap[-1],
-                mfc=cmap[-1],
-                ms=6,
-                label="Exp.",
-            )
+                plt.figure(k * num_figs + 0)
+                plt.plot(
+                    exp_ux_df.z,
+                    exp_ux_df.ux,
+                    ls="-",
+                    lw=1,
+                    color=cmap[-1],
+                    marker=markertype[0],
+                    mec=cmap[-1],
+                    mfc=cmap[-1],
+                    ms=6,
+                    label="Exp.",
+                )
 
-            plt.figure(k * num_figs + 1)
-            plt.plot(
-                exp_uy_df["z"],
-                exp_uy_df["uy"],
-                ls="-",
-                lw=1,
-                color=cmap[-1],
-                marker=markertype[0],
-                mec=cmap[-1],
-                mfc=cmap[-1],
-                ms=6,
-                label="Exp.",
+                plt.figure(k * num_figs + 1)
+                plt.plot(
+                    exp_uy_df.z,
+                    exp_uy_df.uy,
+                    ls="-",
+                    lw=1,
+                    color=cmap[-1],
+                    marker=markertype[0],
+                    mec=cmap[-1],
+                    mfc=cmap[-1],
+                    ms=6,
+                    label="Exp.",
+                )
+            except IndexError:
+                pass
+
+            # Load corresponding SA data
+            saname = os.path.join(sadir, f"uz_{row.xslicet:.1f}.csv")
+            try:
+                sadf = pd.read_csv(saname)
+            except FileNotFoundError:
+                continue
+            p = plt.plot(
+                sadf.y, sadf.uz, ls="-", color=cmap[-2], label="Sitaraman et al. (2010)"
             )
+            p[0].set_dashes(dashseq[-1])
 
     # Save plots
     fname = "vortex.pdf"
     with PdfPages(fname) as pdf:
-        for k, xslice in enumerate(xslices):
+        for k, (index, row) in enumerate(xslices.iterrows()):
             plt.figure(k * num_figs + 0)
             ax = plt.gca()
             plt.xlabel(r"$z/c$", fontsize=22, fontweight="bold")
@@ -240,7 +256,7 @@ if __name__ == "__main__":
             plt.setp(ax.get_xmajorticklabels(), fontsize=16, fontweight="bold")
             plt.setp(ax.get_ymajorticklabels(), fontsize=16, fontweight="bold")
             ax.set_xlim([zmin, zmax])
-            ax.set_title(r"$x={0:.2f}$".format(xslice))
+            ax.set_title(r"$x={0:.2f}$".format(row.xslicet))
             legend = ax.legend(loc="best")
             plt.tight_layout()
             pdf.savefig(dpi=300)
@@ -252,7 +268,7 @@ if __name__ == "__main__":
             plt.setp(ax.get_xmajorticklabels(), fontsize=16, fontweight="bold")
             plt.setp(ax.get_ymajorticklabels(), fontsize=16, fontweight="bold")
             ax.set_xlim([zmin, zmax])
-            ax.set_title(r"$x={0:.2f}$".format(xslice))
+            ax.set_title(r"$x={0:.2f}$".format(row.xslicet))
             plt.tight_layout()
             pdf.savefig(dpi=300)
 
@@ -265,7 +281,7 @@ if __name__ == "__main__":
             plt.tight_layout()
             ax.set_xlim([zmin, zmax])
             ax.set_ylim([ymin, ymax])
-            ax.set_title(r"$x={0:.2f}$".format(xslice))
+            ax.set_title(r"$x={0:.2f}$".format(row.xslicet))
             plt.tight_layout()
             pdf.savefig(dpi=300)
 
