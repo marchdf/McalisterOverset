@@ -7,7 +7,7 @@ import re
 import numpy as np
 import pandas as pd
 import yaml
-import slice_locations as slice_locations
+import definitions as defs
 
 
 # ========================================================================
@@ -60,16 +60,38 @@ def parse_ic(fname):
 # ========================================================================
 def parse_angle(fdir):
     """Parse the angle of attack from the folder name"""
-    return int(re.search(r"\d+", fdir).group()), 12.0
+    return int(re.search(r"\d+", fdir).group())
 
 
 # ========================================================================
-def get_wing_slices():
+def get_wing_slices(dim):
     """Return the wing slices"""
-    return pd.DataFrame(slice_locations.get_wing_slices(), columns=["zslice"])
+    return pd.DataFrame(defs.get_wing_slices(dim), columns=["zslice"])
 
 
 # ========================================================================
 def get_vortex_slices():
     """Return the vortex slices"""
-    return pd.DataFrame(slice_locations.get_vortex_slices(), columns=["xslice"])
+    return pd.DataFrame(defs.get_vortex_slices(), columns=["xslice"])
+
+
+# ========================================================================
+def get_renames():
+    return {
+        "Points:0": "x",
+        "Points:1": "y",
+        "Points:2": "z",
+        "pressure": "p",
+        "iblank": "iblank",
+        "absIBlank": "absIBlank",
+        "pressure_force_:0": "fpx",
+        "pressure_force_:1": "fpy",
+        "pressure_force_:2": "fpz",
+        "tau_wall": "tau_wall",
+        "velocity_:0": "ux",
+        "velocity_:1": "uy",
+        "velocity_:2": "uz",
+        "time": "avg_time",
+        "GlobalNodeId": "GlobalNodeId",
+        "PedigreeNodeId": "PedigreeNodeId",
+    }

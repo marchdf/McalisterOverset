@@ -112,14 +112,6 @@ realms:
       target_name: front
       symmetry_user_data:
 
-    - symmetry_boundary_condition: bc_top
-      target_name: top
-      symmetry_user_data:
-
-    - symmetry_boundary_condition: bc_bottom
-      target_name: bottom
-      symmetry_user_data:
-
     - symmetry_boundary_condition: bc_tunnel_wall
       target_name: tunnel_wall
       symmetry_user_data:
@@ -131,6 +123,14 @@ realms:
         use_wall_function: no
         turbulent_ke: 0.0
 
+    - open_boundary_condition: bc_top
+      target_name: top
+      open_user_data:
+        velocity: [0,0,0]
+        pressure: 0.0
+        turbulent_ke: 0.69
+        specific_dissipation_rate: 230.0
+
     - open_boundary_condition: bc_open
       target_name: outlet
       open_user_data:
@@ -141,6 +141,13 @@ realms:
 
     - inflow_boundary_condition: bc_inflow
       target_name: inlet
+      inflow_user_data:
+        velocity: [45.88794631,  3.20879779, 0.0]
+        turbulent_ke: 0.69
+        specific_dissipation_rate: 230.0
+
+    - inflow_boundary_condition: bc_bottom
+      target_name: bottom
       inflow_user_data:
         velocity: [45.88794631,  3.20879779, 0.0]
         turbulent_ke: 0.69
@@ -222,7 +229,7 @@ Time_Integrators:
       name: ti_1
       start_time: 0
       time_step: 0.004
-      termination_step_count: 5000
+      termination_step_count: 1000
       time_stepping_type: fixed
       time_step_count: 0
       second_order_accuracy: yes

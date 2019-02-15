@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
 import utilities
-import slice_locations
+import definitions as defs
 
 # ========================================================================
 #
@@ -89,122 +89,112 @@ if __name__ == "__main__":
         description="A simple plot tool for wing quantities"
     )
     parser.add_argument("-s", "--show", help="Show the plots", action="store_true")
+    parser.add_argument(
+        "-f",
+        "--folders",
+        nargs="+",
+        help="Folder where files are stored",
+        type=str,
+        required=True,
+    )
     args = parser.parse_args()
 
-    # Setup
-    fdir = os.path.abspath("SST-12")
-    yname = os.path.join(fdir, "mcalister.yaml")
-    fname = "avg_slice.csv"
-    sdirs = ["wing_slices"]
-    labels = ["SST-12"]
-    half_wing_length = slice_locations.get_half_wing_length()
+    # Loop on folders
+    for i, folder in enumerate(args.folders):
 
-    # simulation setup parameters
-    u0, v0, w0, umag0, rho0, mu = utilities.parse_ic(yname)
-    aoa, baseline_aoa = utilities.parse_angle(fdir)
-    chord = 1
+        # Setup
+        fdir = os.path.abspath(folder)
+        yname = os.path.join(fdir, "mcalister.yaml")
+        fname = "avg_slice.csv"
+        dim = defs.get_dimension(yname)
+        half_wing_length = defs.get_half_wing_length()
 
-    # experimental values
-    edir = os.path.abspath(os.path.join("exp_data", f"aoa-{aoa}"))
-    exp_zslices = utilities.get_wing_slices()
+        # simulation setup parameters
+        u0, v0, w0, umag0, rho0, mu = utilities.parse_ic(yname)
+        aoa = utilities.parse_angle(fdir)
+        chord = 1
 
-    # data from other CFD simulations (SA model)
-    sadir = os.path.abspath(os.path.join("sitaraman_data", f"aoa-{aoa}"))
+        # experimental values
+        edir = os.path.abspath(os.path.join("exp_data", f"aoa-{aoa}"))
+        zslices = utilities.get_wing_slices(dim)
+        zslices["zslicen"] = zslices.zslice / half_wing_length
 
-    # Loop on data directories
-    for i, sdir in enumerate([os.path.join(fdir, sdir) for sdir in sdirs]):
+        # data from other CFD simulations (SA model)
+        sadir = os.path.abspath(os.path.join("sitaraman_data", f"aoa-{aoa}"))
 
         # Read in data
-        df = pd.read_csv(os.path.join(sdir, fname), delimiter=",")
-        renames = {
-            "Points:0": "x",
-            "Points:1": "y",
-            "Points:2": "z",
-            "pressure": "p",
-            "iblank": "iblank",
-            "absIBlank": "absIBlank",
-            "pressure_force_:0": "fpx",
-            "pressure_force_:1": "fpy",
-            "pressure_force_:2": "fpz",
-            "tau_wall": "tau_wall",
-            "velocity_:0": "ux",
-            "velocity_:1": "uy",
-            "velocity_:2": "uz",
-            "time": "avg_time",
-        }
+        df = pd.read_csv(os.path.join(fdir, "wing_slices", fname), delimiter=",")
+        renames = utilities.get_renames()
         df.columns = [renames[col] for col in df.columns]
 
-        # Project coordinates on to chord axis
-        ang = np.radians(aoa)
-        crdvec = np.array([np.cos(ang), -np.sin(ang)])
-        rotcen = 0.25
-        df["xovc"] = (
-            np.dot(np.asarray([df.x - rotcen, df.y]).T, crdvec) / chord + rotcen
-        )
+        # # Project coordinates on to chord axis
+        # ang = np.radians(aoa)
+        # crdvec = np.array([np.cos(ang), -np.sin(ang)])
+        # rotcen = 0.25
+        # df["xovc"] = (
+        #     np.dot(np.asarray([df.x - rotcen, df.y]).T, crdvec) / chord + rotcen
+        # )
 
         # Calculate the negative of the surface pressure coefficient
-        df["cp"] = -df["p"] / (0.5 * rho0 * umag0 ** 2)
+        df["cp"] = -df.p / (0.5 * rho0 * umag0 ** 2)
 
         # Plot cp in each slice
-        zslices = np.unique(df["z"])
-
-        for k, zslice in enumerate(zslices):
-            subdf = df[df["z"] == zslice]
+        for k, (index, row) in enumerate(zslices.iterrows()):
+            subdf = df[np.fabs(df.z - row.zslice) < 1e-5]
 
             # Sort for a pretty plot
-            x, y, cp = sort_by_angle(
-                subdf["xovc"].values, subdf["y"].values, subdf["cp"].values
-            )
+            x, y, cp = sort_by_angle(subdf.x.values, subdf.y.values, subdf.cp.values)
 
             # plot
             plt.figure(k)
-            ax = plt.gca()
-            p = plt.plot(x, cp, ls="-", lw=2, color=cmap[i], label=labels[i])
+            p = plt.plot(x, cp, ls="-", lw=2, color=cmap[i], label=f"SST {aoa} {dim}D")
             p[0].set_dashes(dashseq[i])
 
             # Load corresponding exp data
-            idx = exp_zslices[np.fabs(exp_zslices.zslice - zslice) < 1e-5].index[0]
-            ename = glob.glob(os.path.join(edir, "cp_*_{:d}.txt".format(idx)))[0]
-            exp_df = pd.read_csv(ename, header=0, names=["x", "cp"])
-            plt.plot(
-                exp_df.x,
-                exp_df.cp,
-                ls="",
-                color=cmap[-1],
-                marker=markertype[0],
-                ms=6,
-                mec=cmap[-1],
-                mfc=cmap[-1],
-                label="Exp.",
-            )
+            if i == 0:
+                try:
+                    ename = glob.glob(
+                        os.path.join(edir, f"cp_*_{row.zslicen:.3f}.txt")
+                    )[0]
+                    exp_df = pd.read_csv(ename, header=0, names=["x", "cp"])
+                    plt.plot(
+                        exp_df.x,
+                        exp_df.cp,
+                        ls="",
+                        color=cmap[-1],
+                        marker=markertype[0],
+                        ms=6,
+                        mec=cmap[-1],
+                        mfc=cmap[-1],
+                        label="Exp.",
+                    )
+                except FileNotFoundError:
+                    pass
 
-            # Load corresponding SA data
-            satname = os.path.join(
-                sadir, "cp_{0:.3f}_top.csv".format(zslice / half_wing_length)
-            )
-            sabname = os.path.join(
-                sadir, "cp_{0:.3f}_bot.csv".format(zslice / half_wing_length)
-            )
-            try:
-                satop = pd.read_csv(satname)
-                sabot = pd.read_csv(sabname)
-            except FileNotFoundError:
-                continue
-            satop.sort_values(by=["x"], inplace=True)
-            sabot.sort_values(by=["x"], inplace=True, ascending=False)
-            plt.plot(
-                np.concatenate((satop.x, sabot.x), axis=0),
-                np.concatenate((satop.cp, sabot.cp), axis=0),
-                ls="-",
-                color=cmap[-2],
-                label="Sitaraman et al. (2010)",
-            )
+                # Load corresponding SA data
+                satname = os.path.join(sadir, f"cp_{row.zslicen:.3f}_top.csv")
+                sabname = os.path.join(sadir, f"cp_{row.zslicen:.3f}_bot.csv")
+                try:
+                    satop = pd.read_csv(satname)
+                    sabot = pd.read_csv(sabname)
+                except FileNotFoundError:
+                    continue
+                satop.sort_values(by=["x"], inplace=True)
+                sabot.sort_values(by=["x"], inplace=True, ascending=False)
+                p = plt.plot(
+                    np.concatenate((satop.x, sabot.x), axis=0),
+                    np.concatenate((satop.cp, sabot.cp), axis=0),
+                    ls="-",
+                    color=cmap[-2],
+                    label="Sitaraman et al. (2010)",
+                )
+                p[0].set_dashes(dashseq[-1])
 
     # Save plots
     fname = "wing_cp.pdf"
     with PdfPages(fname) as pdf:
 
-        for k, zslice in enumerate(zslices):
+        for k, (index, row) in enumerate(zslices.iterrows()):
             plt.figure(k)
             ax = plt.gca()
             plt.xlabel(r"$x/c$", fontsize=22, fontweight="bold")
@@ -213,7 +203,7 @@ if __name__ == "__main__":
             plt.setp(ax.get_ymajorticklabels(), fontsize=16, fontweight="bold")
             plt.xlim([0, chord])
             plt.ylim([-1.5, 5.5])
-            ax.set_title(r"$z/s={0:.5f}$".format(zslice / half_wing_length))
+            ax.set_title(r"$z/s={0:.3f}$".format(row.zslicen))
             plt.tight_layout()
             if k == 0:
                 legend = ax.legend(loc="best")
