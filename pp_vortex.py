@@ -83,7 +83,7 @@ clip1.ClipType = "Plane"
 clip1.Scalars = ["POINTS", "pressure"]
 
 # init the 'Plane' selected for 'ClipType'
-clip1.ClipType.Origin = [0.0, -1.0, 0.0]
+clip1.ClipType.Origin = [0.0, -0.5, 0.0]
 clip1.ClipType.Normal = [0.0, -1.0, 0.0]
 
 # create a new 'Clip'
@@ -92,7 +92,7 @@ clip2.ClipType = "Plane"
 clip2.Scalars = ["POINTS", "pressure"]
 
 # init the 'Plane' selected for 'ClipType'
-clip2.ClipType.Origin = [0.0, 1.0, 0.0]
+clip2.ClipType.Origin = [0.0, 2.0, 0.0]
 clip2.ClipType.Normal = [0.0, 1.0, 0.0]
 
 # create a new 'Clip'
