@@ -1,3 +1,12 @@
+import re
+
+
+# ========================================================================
+def get_aoa(fdir):
+    """Parse the angle of attack from the folder name"""
+    return int(re.search(r"\d+", fdir).group())
+
+
 # ========================================================================
 def get_half_wing_length():
     return 3.3

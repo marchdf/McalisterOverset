@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
         # simulation setup parameters
         u0, v0, w0, umag0, rho0, mu = utilities.parse_ic(yname)
-        aoa = utilities.parse_angle(fdir)
+        aoa = defs.get_aoa(fdir)
 
         # experimental values
         edir = os.path.abspath(os.path.join("exp_data", f"aoa-{aoa}"))
@@ -120,29 +120,37 @@ if __name__ == "__main__":
         df.columns = [renames[col] for col in df.columns]
         df.z -= half_wing_length
 
+        # Rotation transform
+        c, s = np.cos(np.radians(aoa)), np.sin(np.radians(aoa))
+        x0, y0 = 1, 0
+        df["xr"] = c * (df.x - x0) + s * (df.y - y0) + x0
+        df["yr"] = -s * (df.x - x0) + c * (df.y - y0) + y0
+        df["uxr"] = c * df.ux + s * df.uy
+        df["uyr"] = -s * df.ux + c * df.uy
+
         # Lineout through vortex core in each slice
         for k, (index, row) in enumerate(xslices.iterrows()):
-            subdf = df[np.fabs(df.x - row.xslicet) < 1e-5].copy()
+            subdf = df[np.fabs(df.xr - row.xslicet) < 1e-5].copy()
             idx = subdf.p.idxmin()
-            ymin, ymax = np.min(subdf.y), np.max(subdf.y)
+            ymin, ymax = np.min(subdf.yr), np.max(subdf.yr)
             zmin, zmax = np.min(subdf.z), np.max(subdf.z)
 
             # vortex center location
-            yc = np.array([subdf.y.loc[idx]])
+            yc = np.array([subdf.yr.loc[idx]])
             zc = np.array([subdf.z.loc[idx]])
 
             # interpolate across the vortex core
             yline = np.linspace(ymin, ymax, ninterp)
             zline = np.linspace(zmin, zmax, ninterp)
             ux_yc = spi.griddata(
-                (subdf.y, subdf.z),
-                subdf.ux,
+                (subdf.yr, subdf.z),
+                subdf.uxr,
                 (yc[:, None], zline[None, :]),
                 method="cubic",
             )
             uy_yc = spi.griddata(
-                (subdf.y, subdf.z),
-                subdf.uy,
+                (subdf.yr, subdf.z),
+                subdf.uyr,
                 (yc[:, None], zline[None, :]),
                 method="cubic",
             )
@@ -173,7 +181,7 @@ if __name__ == "__main__":
                 subdf["magvel"] = np.sqrt(np.square(subdf[vcols]).sum(axis=1))
 
                 vi = spi.griddata(
-                    (subdf.y, subdf.z),
+                    (subdf.yr, subdf.z),
                     subdf.magvel,
                     (yi[None, :], zi[:, None]),
                     method="cubic",

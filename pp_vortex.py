@@ -10,6 +10,7 @@ paraview.simple._DisableFirstRenderCameraReset()
 import os
 import glob
 import shutil
+import math
 import argparse
 import definitions as defs
 
@@ -69,13 +70,13 @@ if is_overset:
 else:
     sliceinput = exoreader
 
-# create a new 'Slice'
+# create a new 'Slice' rotated so we are perpendicular to freestream
 slice1 = Slice(Input=sliceinput)
 slice1.SliceType = "Plane"
+slice1.SliceType.Origin = [1.0, 0.0, 3.3]
+aoa = math.radians(defs.get_aoa(fdir))
+slice1.SliceType.Normal = [math.cos(aoa), math.sin(aoa), 0.0]
 slice1.SliceOffsetValues = defs.get_vortex_slices()
-
-# init the 'Plane' selected for 'SliceType'
-slice1.SliceType.Origin = [1.0, 0.0, 0.0]
 
 # create a new 'Clip'
 clip1 = Clip(Input=slice1)

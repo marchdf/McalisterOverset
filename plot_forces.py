@@ -86,7 +86,7 @@ if __name__ == "__main__":
         area = defs.get_wing_area(dim)
         u0, v0, w0, umag0, rho0, mu = utilities.parse_ic(yname)
         dynPres = rho0 * 0.5 * (umag0 ** 2)
-        aoa = utilities.parse_angle(fdir)
+        aoa = defs.get_aoa(fdir)
 
         # Lift and drag
         alpha = np.radians(aoa)
@@ -101,7 +101,10 @@ if __name__ == "__main__":
         cd_exp = df_cl_cd.cd.iloc[0]
 
         plt.figure(0)
-        plt.plot(df.Time, df.cl, ls="-", lw=2, color=cmap[k], label=f"SST {aoa} {dim}D")
+        p = plt.plot(
+            df.Time, df.cl, ls="-", lw=2, color=cmap[k], label=f"SST {aoa} {dim}D"
+        )
+        p[0].set_dashes(dashseq[k])
         if k == 0:
             plt.plot(
                 [df.Time.min(), df.Time.max()],
@@ -112,7 +115,10 @@ if __name__ == "__main__":
             )
 
         plt.figure(1)
-        plt.plot(df.Time, df.cd, ls="-", lw=2, color=cmap[k], label=f"SST {aoa} {dim}D")
+        p = plt.plot(
+            df.Time, df.cd, ls="-", lw=2, color=cmap[k], label=f"SST {aoa} {dim}D"
+        )
+        p[0].set_dashes(dashseq[k])
         if k == 0:
             plt.plot(
                 [df.Time.min(), df.Time.max()],

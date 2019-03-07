@@ -58,12 +58,6 @@ def parse_ic(fname):
 
 
 # ========================================================================
-def parse_angle(fdir):
-    """Parse the angle of attack from the folder name"""
-    return int(re.search(r"\d+", fdir).group())
-
-
-# ========================================================================
 def get_wing_slices(dim):
     """Return the wing slices"""
     return pd.DataFrame(defs.get_wing_slices(dim), columns=["zslice"])
