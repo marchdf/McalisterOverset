@@ -129,6 +129,7 @@ if __name__ == "__main__":
         df["uyr"] = -s * df.ux + c * df.uy
 
         # Lineout through vortex core in each slice
+        vortex_core = []
         for k, (index, row) in enumerate(xslices.iterrows()):
             subdf = df[np.fabs(df.xr - row.xslicet) < 1e-5].copy()
             idx = subdf.p.idxmin()
@@ -136,8 +137,11 @@ if __name__ == "__main__":
             zmin, zmax = np.min(subdf.z), np.max(subdf.z)
 
             # vortex center location
+            xc = np.array([subdf.xr.loc[idx]])
             yc = np.array([subdf.yr.loc[idx]])
             zc = np.array([subdf.z.loc[idx]])
+            pc = np.array([subdf.p.loc[idx]])
+            vortex_core.append([xc[0], yc[0], zc[0], pc[0]])
 
             # interpolate across the vortex core
             yline = np.linspace(ymin, ymax, ninterp)
@@ -198,60 +202,78 @@ if __name__ == "__main__":
                 plt.ylim(ymin, ymax)
 
             # Experimental data
-            try:
-                ux_ename = glob.glob(os.path.join(edir, f"ux_*_{row.xslice:.1f}.txt"))[
-                    0
-                ]
-                uy_ename = glob.glob(os.path.join(edir, f"uz_*_{row.xslice:.1f}.txt"))[
-                    0
-                ]
-                exp_ux_df = pd.read_csv(ux_ename, header=0, names=["z", "ux"])
-                exp_uy_df = pd.read_csv(uy_ename, header=0, names=["z", "uy"])
+            if i == 0:
+                try:
+                    ux_ename = glob.glob(
+                        os.path.join(edir, f"ux_*_{row.xslice:.1f}.txt")
+                    )[0]
+                    uy_ename = glob.glob(
+                        os.path.join(edir, f"uz_*_{row.xslice:.1f}.txt")
+                    )[0]
+                    exp_ux_df = pd.read_csv(ux_ename, header=0, names=["z", "ux"])
+                    exp_uy_df = pd.read_csv(uy_ename, header=0, names=["z", "uy"])
 
-                # Change units
-                exp_ux_df["z"] = exp_ux_df.z * mm2m / exp_chord
-                exp_uy_df["z"] = exp_uy_df.z * mm2m / exp_chord
+                    # Change units
+                    exp_ux_df["z"] = exp_ux_df.z * mm2m / exp_chord
+                    exp_uy_df["z"] = exp_uy_df.z * mm2m / exp_chord
 
-                plt.figure(k * num_figs + 0)
-                plt.plot(
-                    exp_ux_df.z,
-                    exp_ux_df.ux,
-                    ls="-",
-                    lw=1,
-                    color=cmap[-1],
-                    marker=markertype[0],
-                    mec=cmap[-1],
-                    mfc=cmap[-1],
-                    ms=6,
-                    label="Exp.",
-                )
+                    plt.figure(k * num_figs + 0)
+                    plt.plot(
+                        exp_ux_df.z,
+                        exp_ux_df.ux,
+                        ls="-",
+                        lw=1,
+                        color=cmap[-1],
+                        marker=markertype[0],
+                        mec=cmap[-1],
+                        mfc=cmap[-1],
+                        ms=6,
+                        label="Exp.",
+                    )
 
-                plt.figure(k * num_figs + 1)
-                plt.plot(
-                    exp_uy_df.z,
-                    exp_uy_df.uy,
-                    ls="-",
-                    lw=1,
-                    color=cmap[-1],
-                    marker=markertype[0],
-                    mec=cmap[-1],
-                    mfc=cmap[-1],
-                    ms=6,
-                    label="Exp.",
-                )
-            except IndexError:
-                pass
+                    plt.figure(k * num_figs + 1)
+                    plt.plot(
+                        exp_uy_df.z,
+                        exp_uy_df.uy,
+                        ls="-",
+                        lw=1,
+                        color=cmap[-1],
+                        marker=markertype[0],
+                        mec=cmap[-1],
+                        mfc=cmap[-1],
+                        ms=6,
+                        label="Exp.",
+                    )
+                except IndexError:
+                    pass
 
             # Load corresponding SA data
-            saname = os.path.join(sadir, f"uz_{row.xslicet:.1f}.csv")
-            try:
-                sadf = pd.read_csv(saname)
-            except FileNotFoundError:
-                continue
-            p = plt.plot(
-                sadf.y, sadf.uz, ls="-", color=cmap[-2], label="Sitaraman et al. (2010)"
-            )
-            p[0].set_dashes(dashseq[-1])
+            if i == 0:
+                saname = os.path.join(sadir, f"uz_{row.xslicet:.1f}.csv")
+                try:
+                    sadf = pd.read_csv(saname)
+                except FileNotFoundError:
+                    continue
+                p = plt.plot(
+                    sadf.y,
+                    sadf.uz,
+                    ls="-",
+                    color=cmap[-2],
+                    label="Sitaraman et al. (2010)",
+                )
+                p[0].set_dashes(dashseq[-1])
+
+        vortex_core = pd.DataFrame(vortex_core, columns=["xc", "yc", "zc", "pc"])
+        plt.figure("vortex_core")
+        p = plt.plot(
+            vortex_core.xc,
+            vortex_core.pc,
+            lw=2,
+            marker=markertype[i],
+            color=cmap[i],
+            label="folder",
+        )
+        p[0].set_dashes(dashseq[i])
 
     # Save plots
     fname = "vortex.pdf"
@@ -286,12 +308,20 @@ if __name__ == "__main__":
             plt.ylabel(r"$y/c$", fontsize=22, fontweight="bold")
             plt.setp(ax.get_xmajorticklabels(), fontsize=16, fontweight="bold")
             plt.setp(ax.get_ymajorticklabels(), fontsize=16, fontweight="bold")
-            plt.tight_layout()
             ax.set_xlim([zmin, zmax])
             ax.set_ylim([ymin, ymax])
             ax.set_title(r"$x={0:.2f}$".format(row.xslicet))
             plt.tight_layout()
             pdf.savefig(dpi=300)
+
+        plt.figure("vortex_core")
+        ax = plt.gca()
+        plt.xlabel(r"$x/c$", fontsize=22, fontweight="bold")
+        plt.ylabel(r"$p$", fontsize=22, fontweight="bold")
+        plt.setp(ax.get_xmajorticklabels(), fontsize=16, fontweight="bold")
+        plt.setp(ax.get_ymajorticklabels(), fontsize=16, fontweight="bold")
+        plt.tight_layout()
+        pdf.savefig(dpi=300)
 
     if args.show:
         plt.show()
